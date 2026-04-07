@@ -62,11 +62,10 @@ def clear_cache():
     load_data.clear()
 
 # ==========================================
-# 3. 核心邏輯功能函式
+# 3. 核心功能
 # ==========================================
 
 def get_formatted_product_df():
-    """統一格式化商品選單：貨號 | 品名 (規格 / 顏色)"""
     df = load_data("Products")
     if df.empty: return df
     df['sku'] = df['sku'].astype(str)
@@ -201,7 +200,7 @@ def render_history_table(doc_type_filter=None):
         st.divider()
 
 # ==========================================
-# 4. 主程式分頁介面
+# 4. 主程式分頁
 # ==========================================
 st.set_page_config(page_title=PAGE_TITLE, layout="wide", page_icon="💎")
 st.title(f"💎 {PAGE_TITLE}")
@@ -223,16 +222,13 @@ if page == "📦 商品管理":
         c_cat, c_ser = st.columns(2)
         cat_opt = c_cat.selectbox("1. 分類", cat_list + ["➕ 手動輸入新分類..."])
         final_cat = c_cat.text_input("✍️ 新分類名稱") if cat_opt == "➕ 手動輸入新分類..." else cat_opt
-        
         if cat_opt != "➕ 手動輸入新分類..." and not current_df.empty:
             filtered_sers = current_df[current_df['category'] == cat_opt]['series'].unique().tolist()
             final_ser_list = sorted(list(set(filtered_sers)))
             if not final_ser_list: final_ser_list = sorted(SERIES)
         else: final_ser_list = sorted(SERIES)
-        
         ser_opt = c_ser.selectbox("2. 系列", final_ser_list + ["➕ 手動輸入新系列..."])
         final_ser = c_ser.text_input("✍️ 新系列名稱") if ser_opt == "➕ 手動輸入新系列..." else ser_opt
-        
         auto_sku = generate_auto_sku(final_ser, final_cat, set(current_df['sku'].astype(str)) if not current_df.empty else set())
         c1, c2 = st.columns(2)
         sku = c1.text_input("3. 貨號", value=auto_sku)
@@ -258,7 +254,7 @@ if page == "📦 商品管理":
                     if update_product(sel_sku, {'name': n_name, 'spec': n_spec, 'color': n_color, 'note': n_note}):
                         st.success("✅ 更新成功"); time.sleep(1); st.rerun()
 
-# --- 📦 移庫作業 ---
+# --- 其餘功能模組 ---
 elif page == "📦 移庫作業":
     st.subheader("📦 倉庫間移庫")
     prods = get_formatted_product_df()
@@ -279,7 +275,6 @@ elif page == "📦 移庫作業":
                     st.success("✅ 移庫完成"); time.sleep(1); st.rerun()
     render_history_table(["移庫(撥出)", "移庫(撥入)"])
 
-# --- 📥 進貨作業 ---
 elif page == "📥 進貨作業":
     st.subheader("📥 進貨入庫")
     prods = get_formatted_product_df()
@@ -294,7 +289,6 @@ elif page == "📥 進貨作業":
                     st.success("✅ 進貨成功"); time.sleep(1); st.rerun()
     render_history_table("進貨")
 
-# --- 🚚 出貨作業 ---
 elif page == "🚚 出貨作業":
     st.subheader("🚚 銷售出貨 (多品項清單)")
     if 'out_list' not in st.session_state: st.session_state['out_list'] = []
@@ -318,7 +312,6 @@ elif page == "🚚 出貨作業":
             st.session_state['out_list'] = []; st.success("🎉 出貨完成"); time.sleep(1); st.rerun()
     render_history_table("銷售出貨")
 
-# --- 🔨 製造作業 ---
 elif page == "🔨 製造作業":
     st.subheader("🔨 生產與拆解管理")
     if 'm_in_list' not in st.session_state: st.session_state['m_in_list'] = []
@@ -363,7 +356,6 @@ elif page == "🔨 製造作業":
                     st.success("OK"); time.sleep(1); st.rerun()
     render_history_table(["製造領料", "製造入庫"])
 
-# --- 📊 報表查詢 ---
 elif page == "📊 報表查詢":
     st.subheader("📊 庫存報表")
     df = get_stock_overview()
