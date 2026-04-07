@@ -67,6 +67,7 @@ def clear_cache():
 # ==========================================
 
 def get_formatted_product_df():
+    """統一格式化商品選單：貨號 | 品名 (規格 / 顏色)"""
     df = load_data("Products")
     if df.empty: return df
     df['spec'] = df['spec'].fillna('').astype(str)
@@ -231,7 +232,7 @@ with st.sidebar:
     page = st.radio("前往", ["📦 商品管理", "📦 移庫作業", "📥 進貨作業", "🚚 出貨作業", "🔨 製造作業", "📊 報表查詢"])
     if st.button("🔄 強制重新讀取"): clear_cache(); st.rerun()
 
-# --- 📦 商品管理 (聯動式動態選單) ---
+# --- 📦 商品管理 ---
 if page == "📦 商品管理":
     st.subheader("📦 商品資料維護")
     t1, t2 = st.tabs(["✨ 新增商品", "✏️ 修改/刪除商品"])
@@ -244,7 +245,6 @@ if page == "📦 商品管理":
         cat_opt = c_cat.selectbox("1. 分類", cat_list + ["➕ 手動輸入新分類..."])
         final_cat = c_cat.text_input("✍️ 新分類名稱") if cat_opt == "➕ 手動輸入新分類..." else cat_opt
         
-        # 聯動系列過濾
         if cat_opt != "➕ 手動輸入新分類..." and not current_df.empty:
             filtered_sers = current_df[current_df['category'] == cat_opt]['series'].unique().tolist()
             final_ser_list = sorted(list(set(filtered_sers)))
@@ -268,12 +268,22 @@ if page == "📦 商品管理":
                 s, m = add_product(sku, name, final_cat, final_ser, v_spec, note, v_color)
                 if s: st.success(m); clear_cache(); time.sleep(1); st.rerun()
                 else: st.error(m)
+            else: st.error("❌ 請填寫必填欄位。")
+            
     with t2:
-        df_p = load_data("Products")
-        if not df_p.empty:
-            sel_sku = st.selectbox("🔍 選擇商品", df_p['sku'].astype(str))
-            curr = df_p[df_p['sku'].astype(str) == sel_sku].iloc[0]
-            with st.form("edit"):
+        # ✨ 優化處：呼叫 get_formatted_product_df() 讓選單顯示 品名 + 貨號
+        prods_formatted = get_formatted_product_df()
+        if not prods_formatted.empty:
+            sel_label = st.selectbox("🔍 選擇要修改的商品 (可輸入名稱或貨號搜尋)", prods_formatted['label'].tolist())
+            
+            # 從 label 拆分回 SKU
+            sel_sku = sel_label.split(" | ")[0]
+            
+            # 取得該商品原始資料
+            curr = prods_formatted[prods_formatted['sku'].astype(str) == sel_sku].iloc[0]
+            
+            with st.form("edit_prod"):
+                st.info(f"正在修改商品： {sel_label}")
                 n_name = st.text_input("品名", curr['name'])
                 n_spec = st.text_input("規格", curr['spec'])
                 n_color = st.text_input("顏色", curr['color'])
@@ -299,7 +309,6 @@ elif page == "📦 移庫作業":
                 if s: st.success(m); time.sleep(1); st.rerun()
     render_history_table(["移庫(撥出)", "移庫(撥入)"])
 
-# --- 📥 進貨作業 (移除總價) ---
 elif page == "📥 進貨作業":
     st.subheader("📥 進貨入庫")
     prods = get_formatted_product_df()
@@ -317,14 +326,11 @@ elif page == "📥 進貨作業":
                     st.success("成功"); time.sleep(1); st.rerun()
     render_history_table("進貨")
 
-# --- 🚚 出貨作業 (多品項清單 + 詳細備註) ---
 elif page == "🚚 出貨作業":
     st.subheader("🚚 銷售出貨 (多品項清單)")
     if 'out_list' not in st.session_state: st.session_state['out_list'] = []
-    
-    c_oid, c_user = st.columns(2)
-    order_id_display = c_oid.text_input("客戶備註 / 訂單號碼", placeholder="例如: James #3840")
-    user = c_user.selectbox("經手人", KEYERS, index=3)
+    order_note = st.text_input("客戶備註 / 訂單號碼", placeholder="例如: James #3840")
+    user = st.selectbox("經手人", KEYERS, index=3)
     order_detail_note = st.text_area("📋 出貨單詳細備註 (大框框)", placeholder="在此輸入詳細包裝或物流說明...", height=100)
     
     prods = get_formatted_product_df()
@@ -352,7 +358,6 @@ elif page == "🚚 出貨作業":
             st.session_state['out_list'] = []; st.success("批次出貨成功"); time.sleep(1); st.rerun()
     render_history_table("銷售出貨")
 
-# --- 🔨 製造作業 (多品項領料清單) ---
 elif page == "🔨 製造作業":
     st.subheader("🔨 生產與拆解管理")
     if 'm_in_list' not in st.session_state: st.session_state['m_in_list'] = []
@@ -403,10 +408,9 @@ elif page == "🔨 製造作業":
                 q = st.number_input("回庫量", 1.0)
                 if st.form_submit_button("2. 回庫原料"):
                     add_transaction("製造領料", str(date.today()), m.split(" | ")[0], "Wen", -q, "管理員", "拆解回庫")
-                    st.success("已加回"); time.sleep(1); st.rerun()
+                    st.success("原料已回庫"); time.sleep(1); st.rerun()
     render_history_table(["製造領料", "製造入庫"])
 
-# --- 📊 報表查詢 ---
 elif page == "📊 報表查詢":
     st.subheader("📊 庫存報表")
     df = get_stock_overview()
