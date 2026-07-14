@@ -3456,6 +3456,12 @@ elif page == "🔨 製造作業":
             qty_out = mfg_c1.number_input("數量", 1.0)
             mfg_date = mfg_c2.date_input("製造日期", value=date.today())
             mfg_user = mfg_c3.selectbox("入庫人員", KEYERS)
+            batch_no_preview = generate_batch_no(_mfg_sku_preview, mfg_date)
+            batch_no_input = st.text_input(
+                "批號",
+                value=batch_no_preview,
+                help="系統會自動產生批號；如需沿用外部批號，也可以手動修改。"
+            )
 
             df_cat_roles = load_wage_catalog()
             role_defaults = {"empMake": "", "empPack": "", "empShip": "", "empSvc": ""}
@@ -3477,7 +3483,7 @@ elif page == "🔨 製造作業":
             batch_note = st.text_input("批次備註", value="")
             if st.form_submit_button("完工確認"):
                 _mfg_sku = _mfg_sku_preview
-                batch_no = generate_batch_no(_mfg_sku, mfg_date)
+                batch_no = batch_no_input.strip() or generate_batch_no(_mfg_sku, mfg_date)
                 note_text = f"完工入庫｜批號 {batch_no}"
                 if batch_note.strip():
                     note_text += f"｜{batch_note.strip()}"
@@ -3514,6 +3520,11 @@ elif page == "🔨 製造作業":
             bf_wh = bf_c1.selectbox("倉庫", WAREHOUSES, key="bf_wh")
             bf_qty = bf_c2.number_input("批次可用量", min_value=0.0, value=0.0, step=1.0)
             bf_date = bf_c3.date_input("製造日期", value=date.today(), key="bf_date")
+            bf_batch_no = st.text_input(
+                "批號",
+                value=generate_batch_no(bf_sku, bf_date),
+                help="系統會自動產生批號；補登舊庫存時也可以改成你自己的批號。"
+            )
             role_options = KEYERS + ["未指定"]
             br1, br2, br3, br4 = st.columns(4)
             bf_make = br1.selectbox("製造人員", role_options, key="bf_make")
@@ -3525,7 +3536,7 @@ elif page == "🔨 製造作業":
                 if bf_qty <= 0:
                     st.error("請輸入大於 0 的批次可用量")
                 else:
-                    batch_no = generate_batch_no(bf_sku, bf_date)
+                    batch_no = bf_batch_no.strip() or generate_batch_no(bf_sku, bf_date)
                     ok, msg = add_batch_stock(
                         batch_no=batch_no,
                         sku=bf_sku,
