@@ -10,6 +10,7 @@ import time
 # ==========================================
 PAGE_TITLE = "numbertalk 雲端庫存系統"
 SPREADSHEET_NAME = "numbertalk-system"
+APP_VERSION = "2026-07-14 批號版 v2"
 
 WAREHOUSES = ["Wen", "千畇", "James", "Imeng"]
 CATEGORIES = ["天然石", "金屬配件", "線材", "包裝材料", "完成品", "數字珠", "數字串", "香料", "手作設備"]
@@ -2343,6 +2344,7 @@ def _render_profit_report():
 
 with st.sidebar:
     st.header("功能選單")
+    st.caption(f"版本：{APP_VERSION}")
     page = st.radio("前往", ["🛒 訂單管理", "👥 會員管理", "🔨 製造作業", "🚚 出貨作業", "📦 商品管理", "📥 進貨作業", "📦 移庫作業", "📊 報表查詢", "💰 工資管理"])
     if st.button("刷新資料"):
         clear_cache()
